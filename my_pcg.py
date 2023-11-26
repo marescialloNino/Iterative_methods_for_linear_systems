@@ -71,5 +71,6 @@ M = LinearOperator((A.shape[0], A.shape[0]), M_x)
 # Solve with IC(0) preconditioning
 x_precond, info_precond = cg(A, b, M=M, tol=tol, maxiter=maxit)
 
+x, res , iter = mypcg(A,b,tol,maxit,)
 print(f"Solution without preconditioner: {x_no_precond[:10]}")
 print(f"Solution with IC(0) preconditioner: {x_precond[:10]}")
