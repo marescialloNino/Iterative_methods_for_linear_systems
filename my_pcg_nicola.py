@@ -1,7 +1,8 @@
 import numpy as np
+import pandas as pd
 from scipy.linalg import cho_solve, cho_factor
 from scipy.sparse import diags, kron
-from scipy.sparse.linalg import LinearOperator, cg, splu
+from scipy.sparse.linalg import LinearOperator, cg, splu, sparse_cholesky
 
 def discrete_laplacian(n):
     """
@@ -60,17 +61,24 @@ b = A.dot(np.ones(A.shape[0]))
 tol = 1e-8
 maxit = 50
 
-# Solve without preconditioning
-x_no_precond, info_no_precond = cg(A, b, tol=tol, maxiter=maxit)
 
-# Incomplete Cholesky Preconditioner
+# For a sparse matrix
+L= sparse_cholesky(A) 
+
+# Solve withpreconditioning
+x, info = cg(A, b, tol=tol,M=L, maxiter=maxit)
+
+
+""" # Incomplete Cholesky Preconditioner
 M2 = splu(A).L
 M_x = lambda x: splu(A).solve(x)
 M = LinearOperator((A.shape[0], A.shape[0]), M_x)
 
 # Solve with IC(0) preconditioning
-x_precond, info_precond = cg(A, b, M=M, tol=tol, maxiter=maxit)
+x_precond, info_precond = cg(A, b, M=M, tol=tol, maxiter=maxit) """
 
-x, res , iter = mypcg(A,b,tol,maxit,)
-print(f"Solution without preconditioner: {x_no_precond[:10]}")
-print(f"Solution with IC(0) preconditioner: {x_precond[:10]}")
+my_x, my_res , my_iter = mypcg(A,b,tol,maxit,L)
+
+
+df = pd.DataFrame(x,my_x)
+
