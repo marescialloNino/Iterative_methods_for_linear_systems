@@ -1,7 +1,7 @@
 import numpy as np
 import scipy as sp
-from professor import numgrid
-from professor import delsq
+from numgrid_delsq import numgrid
+from numgrid_delsq import delsq
 from mypcg import my_pcg
 import ilupp
 

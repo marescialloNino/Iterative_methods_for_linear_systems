@@ -1,7 +1,7 @@
 import numpy as np
 import scipy as sp
-from professor import numgrid
-from professor import delsq
+from numgrid_delsq import numgrid
+from numgrid_delsq import delsq
 import ilupp
 import matplotlib.pyplot as plt
 import time

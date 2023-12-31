@@ -2,6 +2,7 @@ import numpy as np
 import scipy as sp
 
 def my_pcg(A, b, tol, maxit, L):
+
     x=L@b
     r=b-(A@x)
     p=L@r
@@ -9,6 +10,7 @@ def my_pcg(A, b, tol, maxit, L):
     resvec=[]
     
     for i in range(0,maxit,1):
+        
         c=p@A@p
         
         a=(r@p)/c
