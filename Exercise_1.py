@@ -2,80 +2,79 @@ import numpy as np
 import scipy as sp
 from numgrid_delsq import numgrid
 from numgrid_delsq import delsq
+from mypcg import my_pcg
 import ilupp
 import matplotlib.pyplot as plt
 import time
 
-def my_pcg(A, b, tol, maxit, L):
-    x=L@b
-    r=b-(A@x)
-    p=L@r
-    
-    resvec=[]
-    
-    for i in range(0,maxit,1): 
-        c=p@A@p
-        
-        a=(r@p)/c
-        x=x+(a*p)
-        r=r-a*(A@p)
-
-        v=L@r
-        
-        b=-(v@A@p)/c
-        p=v+b*p
-        
-        resvec.append(sp.linalg.norm(r))
-        if sp.linalg.norm(r)/sp.linalg.norm(b)<tol:
-            break
-    iter=i+1
-    return [x,np.array(resvec),iter]
-
+# SPD matrix arising from the finite difference 2D discretization of the Laplacian
 A=delsq(numgrid('S',102))
 n=A.shape[0]
 b=A@np.ones(n)
 tol=1e-08
 maxit=200
 
-I=sp.sparse.eye(n)
-L=ilupp.IChol0Preconditioner(A)
 
-print('No conditioning:')
+def create_callback(A, b, residuals):
+    """ Factory function to create a callback function for storing residuals for 
+     scipy's cg methods which does not return the residuals vector. """
+    def callback(xk):
+        r = b - A @ xk
+        residuals.append(np.linalg.norm(r))
+    return callback
+
+#identity matrix
+I=sp.sparse.eye(n)
+
 start = time.time()
 trial_1=my_pcg(A,b,tol,maxit,L=I)
-print('execution time: ', time.time() - start)
+print('No conditioning my_pcg execution time: ', time.time() - start)
 
-print('\nIC(0):')
+# Incomplete Cholesky factor (lower triangular matrix such that A = L*L') 
+L=ilupp.IChol0Preconditioner(A)
+
 start = time.time()
 trial_2=my_pcg(A,b,tol,maxit,L=L)
-print('execution time: ', time.time() - start)
+print('my_pcg with incomplete cholesky preconditioning execution time: ', time.time() - start)
+
+residuals_1 = []
+callback_1 = create_callback(A, b, residuals_1)
+
+start = time.time()
+default=sp.sparse.linalg.cg(A,b,x0=np.zeros(A.shape[0]),tol=tol,maxiter=maxit, callback=callback_1)
+print('Scipy cg method without preconditioning execution time: ', time.time() - start)
+
 
 
 L=ilupp.ichol0(A)
-print('\n\nPreconditioner calculation:')
 start = time.time()
 K=sp.sparse.linalg.inv(L@L.T)
-print('execution time: ', time.time() - start)
+print('Preconditioner M=L*L\' calculation execution time: ', time.time() - start)
 
-print('\nScipy default:')
+
+residuals_2 = []
+callback_2 = create_callback(A, b, residuals_2)
+
 start = time.time()
-default=sp.sparse.linalg.cg(A,b,x0=np.zeros(A.shape[0]),tol=tol,maxiter=maxit,M=K)
-print('execution time: ', time.time() - start)
+default_cholesky=sp.sparse.linalg.cg(A,b,x0=np.zeros(A.shape[0]),tol=tol,maxiter=maxit,M=K,callback=callback_2)
+print('Scipy cg method with cholesky IC(0) execution time: ', time.time() - start)
 
 
 plt.plot(trial_1[1],'r+-')
-plt.plot(trial_2[1],'go-',mfc='none')
+plt.plot(residuals_1,'go-',mfc='none')
+plt.plot(trial_2[1],'r+-')
+plt.plot(residuals_2,'go-',mfc='none')
 plt.ylabel('Residual norm')
 plt.xlabel('Iteration number')
-plt.legend(['No preconditioner','IC(0)'],loc=0)
+plt.legend(['mypcg no preconditioner','scipy no preconditioner','mypcg IC(0)','scipy IC(0)'],loc=0)
 plt.yscale('log')
 plt.show()
 
-fig, sol=plt.subplots(nrows=1,ncols=3,figsize=(20,5))
-sol[0].plot(default[0]-1)
-sol[0].set_title('Scipy default solution')
+""" fig, sol=plt.subplots(nrows=1,ncols=3,figsize=(20,5))
+sol[0].plot(default_cholesky[0]-1)
+sol[0].set_title('Scipy default with IC(0) solution')
 sol[1].plot(trial_1[0]-1)
 sol[1].set_title('No preconditioner solution')
 sol[2].plot(trial_2[0]-1)
 sol[2].set_title('IC(0) solution')
-plt.show()
+plt.show() """
