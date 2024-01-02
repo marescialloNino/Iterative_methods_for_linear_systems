@@ -10,7 +10,7 @@ maxit=5000
 n = int(1e4)
 
 # Define the diagonal elements
-diagonal = [200 * (i + 1) if i < 5 else 1 for i in range(n)]
+diagonal = [200 * (i + 1) if i <= 5 else 1 for i in range(n)]
 
 # Create the sparse diagonal matrix
 A1 = sp.sparse.diags(diagonal, 0)
@@ -24,7 +24,7 @@ I = sp.sparse.eye(n)
 # solve liner system
 x, resvec, iter = my_pcg(A1,b,tol,maxit,L=I)
 
-plt.semilogy(range(iter), resvec)
+plt.semilogy(range(iter+1), resvec)
 plt.xlabel('Iteration number')
 plt.ylabel('Residual norm')
 plt.show()

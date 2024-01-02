@@ -40,7 +40,9 @@ for nx in nx_values:
 # Print the results in a table format
 for nx in nx_values:
     for pre_name in preconditioners.keys():
-        print(f"""h={1/nx},
-               Preconditioner={pre_name},
-               Iterations={iteration_results[(nx, pre_name)]}""")
+        print(f"""  
+                n={nx-2},
+                h={1/(nx-2)},
+                Preconditioner={pre_name},
+                Iterations={iteration_results[(nx, pre_name)]}""")
     

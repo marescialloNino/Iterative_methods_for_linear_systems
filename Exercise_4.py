@@ -30,9 +30,9 @@ x_cho, res_cho, iter_cho = my_pcg(A, b, tol, maxit, L=Cho)
 plt.figure(figsize=(10, 6))
 
 # Plot the residuals for each method
-plt.semilogy(range(iter_cg), res_cg, label='CG with no preconditioning',marker='*')
-plt.semilogy(range(iter_jac), res_jac, label='CG with Jacobi preconditioner',marker='*')
-plt.semilogy(range(iter_cho), res_cho, label='CG with IC(0) preconditioner',marker='*')
+plt.semilogy(range(iter_cg + 1), res_cg, label='CG with no preconditioning',marker='*')
+plt.semilogy(range(iter_jac + 1), res_jac, label='CG with Jacobi preconditioner',marker='*')
+plt.semilogy(range(iter_cho + 1), res_cho, label='CG with IC(0) preconditioner',marker='*')
 
 # Add labels and legend
 plt.xlabel('Iteration Number')
