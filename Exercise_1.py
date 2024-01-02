@@ -2,6 +2,7 @@ import numpy as np
 import scipy as sp
 from numgrid_delsq import numgrid
 from numgrid_delsq import delsq
+
 from mypcg import my_pcg
 import ilupp
 import matplotlib.pyplot as plt
@@ -16,8 +17,8 @@ maxit=200
 
 
 def create_callback(A, b, residuals):
-    """ Factory function to create a callback function for storing residuals for 
-     scipy's cg methods which does not return the residuals vector. """
+    """ Factory function to create a callback function for storing residuals at 
+     each iteration for scipy's cg methods which does not return the residuals vector. """
     def callback(xk):
         r = b - A @ xk
         residuals.append(np.linalg.norm(r))
@@ -44,37 +45,25 @@ start = time.time()
 default=sp.sparse.linalg.cg(A,b,x0=np.zeros(A.shape[0]),tol=tol,maxiter=maxit, callback=callback_1)
 print('Scipy cg method without preconditioning execution time: ', time.time() - start)
 
-
-
 L=ilupp.ichol0(A)
 start = time.time()
-K=sp.sparse.linalg.inv(L@L.T)
+M=sp.sparse.linalg.inv(L@L.T)
 print('Preconditioner M=L*L\' calculation execution time: ', time.time() - start)
-
 
 residuals_2 = []
 callback_2 = create_callback(A, b, residuals_2)
 
 start = time.time()
-default_cholesky=sp.sparse.linalg.cg(A,b,x0=np.zeros(A.shape[0]),tol=tol,maxiter=maxit,M=K,callback=callback_2)
+default_cholesky=sp.sparse.linalg.cg(A,b,x0=np.zeros(A.shape[0]),tol=tol,maxiter=maxit,M=M,callback=callback_2)
 print('Scipy cg method with cholesky IC(0) execution time: ', time.time() - start)
 
 
-plt.plot(trial_1[1],'r+-')
-plt.plot(residuals_1,'go-',mfc='none')
-plt.plot(trial_2[1],'r+-')
+plt.plot(trial_1[1],'r*-')
+plt.plot(residuals_1,'yo-',mfc='none')
+plt.plot(trial_2[1],'b*-')
 plt.plot(residuals_2,'go-',mfc='none')
 plt.ylabel('Residual norm')
 plt.xlabel('Iteration number')
 plt.legend(['mypcg no preconditioner','scipy no preconditioner','mypcg IC(0)','scipy IC(0)'],loc=0)
 plt.yscale('log')
 plt.show()
-
-""" fig, sol=plt.subplots(nrows=1,ncols=3,figsize=(20,5))
-sol[0].plot(default_cholesky[0]-1)
-sol[0].set_title('Scipy default with IC(0) solution')
-sol[1].plot(trial_1[0]-1)
-sol[1].set_title('No preconditioner solution')
-sol[2].plot(trial_2[0]-1)
-sol[2].set_title('IC(0) solution')
-plt.show() """

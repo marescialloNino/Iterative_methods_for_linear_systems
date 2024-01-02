@@ -14,29 +14,32 @@ def my_pcg(A, b, tol, maxit, L):
         resvec =  vector with the norm of the absolute residual at each iteration
         iter = number of iterations employed """
 
-    x=L@b
+    x = L@b
     # initial residual
-    r=b-(A@x)
-    p=L@r
+    r = b - A@x 
+    #apply preconditioner
+    z = L@r
+    p = z.copy()
     
-    resvec=[]
+    resvec=[np.linalg.norm(r)]
     
-    for i in range(0,maxit,1):
+    for i in range(maxit):
         
-        c=p@A@p
+        Ap = A@p
         
-        a=(r@p)/c
-        x=x+(a*p)
+        alpha = (r@z)/(p@Ap)
+        x += (alpha * p)
         # residual update 
-        r=r-a*(A@p)
+        r -= alpha * Ap
+        resnorm = np.linalg.norm(r)
+        resvec.append(resnorm)
 
-        v=L@r
-        
-        b=-(v@A@p)/c
-        p=v+b*p
-        
-        resvec.append(sp.linalg.norm(r))
-        if sp.linalg.norm(r)/sp.linalg.norm(b)<tol:
+        if resnorm / np.linalg.norm(b) < tol:
             break
-    iter=i+1
-    return [x,np.array(resvec),iter]
+        
+        z = L@r
+        
+        b = -(z@Ap)/(p@Ap)
+        p = z + b * p
+        
+    return x, np.array(resvec), i + 1

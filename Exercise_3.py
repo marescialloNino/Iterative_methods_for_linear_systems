@@ -1,34 +1,31 @@
 import numpy as np
 import scipy as sp
-from numgrid_delsq import numgrid
-from numgrid_delsq import delsq
-import ilupp
-import numba
 from mypcg import my_pcg
 import matplotlib.pyplot as plt
-
-
-n=int(1e4)
-diff=5
-D_init=200*np.arange(1,diff+1,1)
-D_final=np.repeat(1,n-diff)
-D=np.concatenate((D_init,D_final))
-A=sp.sparse.diags(D)
 
 tol=1e-8
 maxit=5000
 
-np.random.seed(42)
-b=np.random.rand(n)
+# Initialize the matrix size
+n = int(1e4)
 
-I=sp.sparse.eye(n)
+# Define the diagonal elements
+diagonal = [200 * (i + 1) if i < 5 else 1 for i in range(n)]
 
-res=my_pcg(A,b,tol,maxit,L=I)
+# Create the sparse diagonal matrix
+A1 = sp.sparse.diags(diagonal, 0)
 
-plt.plot(res[1])
-plt.yscale('log')
+# random rhs 
+b = np.random.rand(n)
+
+# identity matrix (no preconditioning)
+I = sp.sparse.eye(n)
+
+# solve liner system
+x, resvec, iter = my_pcg(A1,b,tol,maxit,L=I)
+
+plt.semilogy(range(iter), resvec)
 plt.xlabel('Iteration number')
 plt.ylabel('Residual norm')
-plt.title('Semilog-y plot')
-plt.legend(['Residual norm'],loc=0)
 plt.show()
+

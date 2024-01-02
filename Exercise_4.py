@@ -1,51 +1,43 @@
 import numpy as np
 import scipy as sp
-from numgrid_delsq import numgrid
-from numgrid_delsq import delsq
 import ilupp
-import numba
 from mypcg import my_pcg
 import matplotlib.pyplot as plt
 
+tol = 1e-8
+maxit = 5000
 
-tol=1e-8
-maxit=5000
+# load SPD matrix created with matlab gallery('whaten',100,100) command
+A = sp.io.loadmat('A_exercise4.mat')['A'].tocsr()
+n = A.shape[0]
 
-A = sp.io.loadmat('A')['A'].tocsr()
-n=A.shape[0]
+# random solution
+x0 = np.random.rand(n)
+# rhs relative to the random solution
+b = A@x0
 
-np.random.seed(500)
-c=np.random.rand(n)
-b=A@c
-
+# define preconditioners
 I=sp.sparse.eye(n)
-F=sp.sparse.diags(1/A.diagonal())
-L=ilupp.IChol0Preconditioner(A)
+Jac=sp.sparse.diags(1/A.diagonal())
+Cho=ilupp.IChol0Preconditioner(A)
 
-non_cond=my_pcg(A,b,tol,maxit,L=I)
-Jacobi_cond=my_pcg(A,b,tol,maxit,L=F)
-Cholesky_cond=my_pcg(A,b,tol,maxit,L=L)
+# solve linear system
+x_cg, res_cg, iter_cg = my_pcg(A, b, tol, maxit, L=I)
+x_jac, res_jac, iter_jac = my_pcg(A, b, tol, maxit, L=Jac)
+x_cho, res_cho, iter_cho = my_pcg(A, b, tol, maxit, L=Cho)
 
-fig, sol=plt.subplots(nrows=1,ncols=3,figsize=(15,5))
-sol[0].plot(non_cond[0]-c)
-sol[1].plot(Jacobi_cond[0]-c)
-sol[2].plot(Cholesky_cond[0]-c)
-for a in sol:
-    a.grid()
-    a.set_ylabel('Solution')
-sol[0].set_title('No conditioning')
-sol[1].set_title('Jacobi')
-sol[2].set_title('IC(0)')
-plt.show()
 
-plt.plot(non_cond[1],'r+-')
-plt.plot(Jacobi_cond[1],'bo-',mfc='none')
-plt.plot(Cholesky_cond[1],'g*-')
-plt.yscale('log')
-plt.xscale('log')
-plt.legend(['No conditioning','Jacobi','IC(0)'])
-plt.grid()
-plt.ylabel('Residual norm')
-plt.xlabel('Iteration number')
-plt.title('Residual comparison')
+plt.figure(figsize=(10, 6))
+
+# Plot the residuals for each method
+plt.semilogy(range(iter_cg), res_cg, label='CG with no preconditioning',marker='*')
+plt.semilogy(range(iter_jac), res_jac, label='CG with Jacobi preconditioner',marker='*')
+plt.semilogy(range(iter_cho), res_cho, label='CG with IC(0) preconditioner',marker='*')
+
+# Add labels and legend
+plt.xlabel('Iteration Number')
+plt.ylabel('Residual Norm')
+plt.title('Convergence of PCG with Different Preconditioners')
+plt.legend()
+
 plt.show()
