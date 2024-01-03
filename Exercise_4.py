@@ -4,7 +4,7 @@ import ilupp
 from mypcg import my_pcg
 import matplotlib.pyplot as plt
 
-tol = 1e-8
+tol = 1e-9
 maxit = 5000
 
 # load SPD matrix created with matlab gallery('whaten',100,100) command

@@ -24,7 +24,7 @@ I = sp.sparse.eye(n)
 # solve liner system
 x, resvec, iter = my_pcg(A1,b,tol,maxit,L=I)
 
-plt.semilogy(range(iter+1), resvec)
+plt.semilogy(range(iter+1), resvec, 'o-')
 plt.xlabel('Iteration number')
 plt.ylabel('Residual norm')
 plt.show()
