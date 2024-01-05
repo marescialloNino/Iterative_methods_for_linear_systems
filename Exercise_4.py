@@ -8,7 +8,7 @@ tol = 1e-9
 maxit = 5000
 
 # load SPD matrix created with matlab gallery('whaten',100,100) command
-A = sp.io.loadmat('A_exercise4.mat')['A'].tocsr()
+A = sp.io.loadmat('./matrixes/A_exercise4.mat')['A'].tocsr()
 n = A.shape[0]
 
 # random solution
