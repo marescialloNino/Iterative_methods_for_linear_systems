@@ -1,7 +1,6 @@
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
-from gmresnew import my_gmres
 import time
 
 # Read the file and extract rows, columns, and data
@@ -12,7 +11,7 @@ rows, cols, data = np.loadtxt('./matrixes/mat13041.rig', unpack=True)
 rows = rows.astype(int) - 1  # Subtract 1 if the file uses 1-based indexing
 cols = cols.astype(int) - 1
 
-# Create the COO sparse matrix
+# Create the sparse matrix
 A = sp.sparse.coo_matrix((data, (rows, cols))).tocsr()
 
 def my_gmres(A, b, tol, maxit, x0):
@@ -94,11 +93,10 @@ print(end - start)
 err=sol[2]
 print(sol[1],sol[3],err[-1])
 
-plt.plot(sol[2],'go-',mfc='none')
+plt.plot(sol[2],'b*-')
 plt.ylabel('Absolute residual')
 plt.xlabel('Iteration number')
-plt.legend(['ILU(0)'],loc=0)
+plt.legend(['my gmres'],loc=0)
 plt.yscale('log')
-plt.grid()
 plt.show()
 

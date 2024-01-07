@@ -5,55 +5,62 @@ import time
 import ilupp
 import pyamg
 
-def my_prec_gmres(A,b,tol,maxit,x0,L,U):
-    w=b-(A@x0)
-    r0=sp.sparse.linalg.spsolve_triangular(L,w,lower=True)
+def my_prec_gmres(A, b, tol, maxit, x0, L, U):
+    # Initial residual computation
+    initial_residual = b - (A @ x0)
+    # Solve lower triangular system
+    lower_step = sp.sparse.linalg.spsolve_triangular(L, initial_residual, lower=True)
     
-    w=sp.sparse.linalg.spsolve_triangular(L,r0,lower=True)
-    tol_vec=sp.sparse.linalg.spsolve_triangular(U,w,lower=False)
+    # Solve for the tolerance vector
+    upper_step = sp.sparse.linalg.spsolve_triangular(L, lower_step, lower=True)
+    tol_vector = sp.sparse.linalg.spsolve_triangular(U, upper_step, lower=False)
     
-    tol_check=tol*sp.linalg.norm(tol_vec)
+    # Compute tolerance check value
+    tol_limit = tol * sp.linalg.norm(tol_vector)
     
-    beta=sp.linalg.norm(r0)
-    v=[]
+    # Initialize beta and basis vectors
+    beta = sp.linalg.norm(lower_step)
+    basis_vectors = []
+    basis_vectors.append(lower_step / beta)
     
-    v.append(r0/beta)
-    
-    h=np.zeros((maxit+1,maxit))
-    resvec=[]
-    for k in range(0,maxit,1):
-        w=sp.sparse.linalg.spsolve_triangular(U,v[k],lower=False)
-        v.append(sp.sparse.linalg.spsolve_triangular(L,A@w,lower=True))
+    # Initialize H matrix and residual vector
+    H_matrix = np.zeros((maxit + 1, maxit))
+    residual_vector = []
+    for k in range(maxit):
+        # Perform iteration steps
+        upper_solve = sp.sparse.linalg.spsolve_triangular(U, basis_vectors[k], lower=False)
+        basis_vectors.append(sp.sparse.linalg.spsolve_triangular(L, A @ upper_solve, lower=True))
         
-        for j in range(0,k+1,1):
-            h[j,k]=v[k+1]@v[j]
-            v[k+1]=v[k+1]-(h[j,k]*v[j])
+        # Orthogonalize the basis vectors
+        for j in range(k + 1):
+            H_matrix[j, k] = np.dot(basis_vectors[k + 1], basis_vectors[j])
+            basis_vectors[k + 1] -= H_matrix[j, k] * basis_vectors[j]
         
-        h[k+1,k]=np.linalg.norm(v[k+1])
-        v[k+1]=v[k+1]/np.linalg.norm(v[k+1])
+        # Normalize the next basis vector
+        H_matrix[k + 1, k] = np.linalg.norm(basis_vectors[k + 1])
+        basis_vectors[k + 1] /= H_matrix[k + 1, k]
 
-        H=h[:k+2,:k+1] #H k+1,k
+        # Perform QR decomposition
+        Q, R = np.linalg.qr(H_matrix[:k + 2, :k + 1], mode='complete')
+        g = beta * Q[0, :]
+
+        # Update residual vector
+        residual_vector.append(np.abs(g[-1]))
+        iteration_flag = 0
+
+        # Solve for y and update x
+        y = sp.linalg.solve_triangular(R[:-1, :], g[:-1], lower=False, check_finite=False)
+        z = np.array(basis_vectors[:-1]).T @ y
+        x = x0 + sp.sparse.linalg.spsolve_triangular(U, z, lower=False)
         
-        Q=np.linalg.qr(H,mode='complete')[0]
-        
-        g=beta*(Q[0,:])
-        
-        resvec.append(np.abs(g[-1]))
-        flag=0
-        R=np.linalg.qr(H,mode='complete')[1]
-        V=np.array(v[:-1]).T
-        #print(R[:-1,:].shape)
-        y=sp.linalg.solve_triangular(R[:-1,:], g[:-1], lower=False, check_finite=False)
-        z=V@y
-        x=x0+sp.sparse.linalg.spsolve_triangular(U,z,lower=False)
-        
-        w=sp.sparse.linalg.spsolve_triangular(L,b-(A@x),lower=True)
-        temp_tol=sp.sparse.linalg.spsolve_triangular(U,w,lower=False)
-        
-        if sp.linalg.norm(temp_tol)<tol_check:
-            flag=-1
+        # Check for convergence
+        new_residual = sp.sparse.linalg.spsolve_triangular(L, b - (A @ x), lower=True)
+        new_tol_vector = sp.sparse.linalg.spsolve_triangular(U, new_residual, lower=False)
+        if sp.linalg.norm(new_tol_vector) < tol_limit:
+            iteration_flag = -1
             break
-    return [x,k+1,resvec,flag]
+
+    return [x, k + 1, residual_vector, iteration_flag]
 
 
 # Read the file and extract rows, columns, and data
@@ -73,6 +80,7 @@ L, U = ilupp.ilut(A,threshold=0.1 )
 n=A.shape[0]
 c=1/np.sqrt(np.arange(1,n+1))
 b=A@c
+beta = np.linalg.norm(b)
 
 tol=1e-10
 itmax=550
@@ -82,15 +90,18 @@ sol=my_prec_gmres(A,b,tol,itmax,np.zeros(n),L,U)
 end = time.time()
 print("my_prec_gmres cpu time: ",end - start)
 print("my_prec_gmres iterations: ",sol[1])
-print("my_prec_gmres final residual: ",sol[2][-1])
+print("my_prec_gmres final absolute residual: ",sol[2][-1])
+print("my_prec_gmres final relative residual: ",sol[2][-1]/beta)
+print("my_prec_gmres 'true' final residual: ",sp.linalg.norm(b-A@sol[0]))
+
 
 def create_gmres_callback(A,b,resvec):
     #Create a callback function for GMRES that stores residual norms.
-    def callback(xk):
-        r = b - A @ xk
+    beta = np.linalg.norm(b)
+    def store_relative_residuals(xk):
+        r = (b - A @ xk)/beta
         resvec.append(np.linalg.norm(r))
-    return callback
-
+    return store_relative_residuals
 
 resvec = []  # List to store residual norms
 callback = create_gmres_callback(A,b,resvec)
@@ -103,14 +114,13 @@ solamg = pyamg.krylov.gmres(A,b,x0,callback=callback,M=ilupp.ILUTPreconditioner(
 end = time.time()
 print("pyAMG gmres cpu time: ",end - start)
 print("pyAMG gmres iterations: ",len(resvec))
-print("pyAMG gmres final residual: ",resvec[-1])
+print("pyAMG gmres final relative residual: ",resvec[-1])
 
 
-plt.plot(sol[2],'go-',mfc='none')
-plt.plot(resvec,'ro-',mfc='none')
-plt.ylabel('Absolute residual')
+plt.plot(sol[2]/beta,'*-',mfc='none')
+plt.plot(resvec,'*-',mfc='none')
+plt.ylabel('Relative residual')
 plt.xlabel('Iteration number')
 plt.legend(['my_prec_gmres ILU(0.1)','pyamg ILU(0.1)'],loc=0)
 plt.yscale('log')
-plt.grid()
 plt.show()

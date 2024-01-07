@@ -23,12 +23,14 @@ b=A@c
 tol=1e-10
 itmax=550
 
+
 def create_gmres_callback(A,b,resvec):
     #Create a callback function for GMRES that stores residual norms.
-    def callback(xk):
-        r = b - A @ xk
+    beta = np.linalg.norm(b)
+    def store_relative_residuals(xk):
+        r = (b - A @ xk)/beta
         resvec.append(np.linalg.norm(r))
-    return callback
+    return store_relative_residuals
 
 x0 = np.zeros(n)
 
@@ -52,17 +54,15 @@ for i in range(len(restrt_values)):
     solutions[restrt_values[i]] = sol
     residual_vectors[restrt_values[i]] = resvec
 
-    # Optional: Print or log the time taken
-    print(f"Time taken for restart={restrt_values[i]}: {end - start} seconds, {len(resvec)} iterations")
+    print(f"Time taken for gmres with restart={restrt_values[i]}: {end - start} seconds, {len(resvec)} iterations, final relative residual={resvec[-1]}")
 
 
-plt.plot(residual_vectors[restrt_values[0]],'g*-',mfc='none')
-plt.plot(residual_vectors[restrt_values[1]],'r*-',mfc='none')
-plt.plot(residual_vectors[restrt_values[2]],'b*-',mfc='none')
+plt.plot(residual_vectors[restrt_values[0]],'go-',mfc='none')
+plt.plot(residual_vectors[restrt_values[1]],'ro-',mfc='none')
+plt.plot(residual_vectors[restrt_values[2]],'bo-',mfc='none')
 plt.plot(residual_vectors[restrt_values[3]],'y*-',mfc='none')
-plt.ylabel('Absolute residual')
+plt.ylabel('Relative residual norm')
 plt.xlabel('Iteration number')
 plt.legend(['restart = 10','restart = 20','restart = 30','restart = 50'],loc=0)
 plt.yscale('log')
-plt.grid()
 plt.show()
